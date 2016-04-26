@@ -5,14 +5,22 @@ import com.yammer.metrics.core.Counter;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.core.Timer;
+
+import org.eclipse.jetty.io.AsyncEndPoint;
 import org.eclipse.jetty.io.Connection;
+import org.eclipse.jetty.io.EndPoint;
+import org.eclipse.jetty.io.nio.AsyncConnection;
+import org.eclipse.jetty.server.AsyncHttpConnection;
+import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.nio.SelectChannelConnector;
 
 import java.io.IOException;
+import java.nio.channels.SocketChannel;
 import java.util.concurrent.TimeUnit;
 
 public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
-    private final Timer duration;
+    private final Timer duration, queueTime, queueTimeWithResponseTimeOfFirstRequest;
     private final Meter accepts, connects, disconnects;
     private final Counter connections;
 
@@ -29,6 +37,16 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
                                           Integer.toString(port),
                                           TimeUnit.MILLISECONDS,
                                           TimeUnit.SECONDS);
+        this.queueTime = registry.newTimer(SelectChannelConnector.class,
+                                           "queue-time",
+                                           Integer.toString(port),
+                                           TimeUnit.MILLISECONDS,
+                                           TimeUnit.SECONDS);
+        this.queueTimeWithResponseTimeOfFirstRequest = registry.newTimer(SelectChannelConnector.class,
+                                                                         "queue-time-with-response-time-of-first-request",
+                                                                         Integer.toString(port),
+                                                                         TimeUnit.MILLISECONDS,
+                                                                         TimeUnit.SECONDS);
         this.accepts = registry.newMeter(SelectChannelConnector.class,
                                          "accepts",
                                          Integer.toString(port),
@@ -56,6 +74,11 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
     }
 
     @Override
+    protected AsyncConnection newConnection(SocketChannel channel,final AsyncEndPoint endpoint) {
+        return new InstrumentedAsyncHttpConnection(this, endpoint, getServer());
+    }
+
+    @Override
     protected void connectionOpened(Connection connection) {
         connections.inc();
         super.connectionOpened(connection);
@@ -70,4 +93,34 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
         this.duration.update(duration, TimeUnit.MILLISECONDS);
         connections.dec();
     }
+
+    public class InstrumentedAsyncHttpConnection extends AsyncHttpConnection {
+
+        private boolean marked = false;
+
+        public InstrumentedAsyncHttpConnection(Connector connector, EndPoint endpoint, Server server) {
+            super(connector, endpoint, server);
+        }
+
+        public Connection handle() throws IOException {
+            if (marked) {
+                return super.handle();
+            }
+
+            marked = true;
+            queueTime.update(
+                System.currentTimeMillis() - getTimeStamp(),
+                TimeUnit.MILLISECONDS);
+
+            Connection connection = super.handle();
+
+            queueTimeWithResponseTimeOfFirstRequest.update(
+                System.currentTimeMillis() - getTimeStamp(),
+                TimeUnit.MILLISECONDS);
+
+            return connection;
+        }
+
+    }
+
 }
