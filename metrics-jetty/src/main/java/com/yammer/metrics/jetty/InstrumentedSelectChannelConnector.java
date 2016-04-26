@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
-    private final Timer connectionDuration, queueTime, requestDuration;
+    private final Timer connectionDuration, queueTime, requestAndQueueDuration;
     private final Meter accepts, connects, disconnects;
     private final Counter connections;
 
@@ -43,11 +43,11 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
                                            Integer.toString(port),
                                            TimeUnit.MILLISECONDS,
                                            TimeUnit.SECONDS);
-        this.requestDuration = registry.newTimer(SelectChannelConnector.class,
-                                                 "request-duration",
-                                                 Integer.toString(port),
-                                                 TimeUnit.MILLISECONDS,
-                                                 TimeUnit.SECONDS);
+        this.requestAndQueueDuration = registry.newTimer(SelectChannelConnector.class,
+                                                         "request-and-queue-duration",
+                                                         Integer.toString(port),
+                                                         TimeUnit.MILLISECONDS,
+                                                         TimeUnit.SECONDS);
         this.accepts = registry.newMeter(SelectChannelConnector.class,
                                          "accepts",
                                          Integer.toString(port),
@@ -76,7 +76,7 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
 
     @Override
     protected AsyncConnection newConnection(SocketChannel channel, AsyncEndPoint endpoint) {
-        return new InstrumentedAsyncHttpConnection(this, endpoint, getServer(), queueTime, requestDuration);
+        return new InstrumentedAsyncHttpConnection(this, endpoint, getServer(), queueTime, requestAndQueueDuration);
     }
 
     @Override
@@ -97,30 +97,30 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
 
     private static class InstrumentedAsyncHttpConnection extends AsyncHttpConnection {
         private final Timer queueTime;
-        private final Timer requestDuration;
+        private final Timer requestAndQueueDuration;
         private final AtomicBoolean marked;
 
         public InstrumentedAsyncHttpConnection(Connector connector,
                                                EndPoint endpoint,
                                                Server server,
                                                Timer queueTime,
-                                               Timer requestDuration) {
+                                               Timer requestAndQueueDuration) {
             super(connector, endpoint, server);
             this.queueTime = queueTime;
-            this.requestDuration = requestDuration;
+            this.requestAndQueueDuration = requestAndQueueDuration;
             this.marked = new AtomicBoolean(false);
         }
 
         @Override
         public Connection handle() throws IOException {
-            long requestStart = System.currentTimeMillis();
-
-            if (marked.compareAndSet(false, true)) {
-                queueTime.update(requestStart - getTimeStamp(), TimeUnit.MILLISECONDS);
+            if (!marked.compareAndSet(false, true)) {
+                return super.handle();
             }
 
+            queueTime.update(System.currentTimeMillis() - getTimeStamp(), TimeUnit.MILLISECONDS);
+
             Connection connection = super.handle();
-            requestDuration.update(System.currentTimeMillis() - requestStart, TimeUnit.MILLISECONDS);
+            requestAndQueueDuration.update(System.currentTimeMillis() - getTimeStamp(), TimeUnit.MILLISECONDS);
             return connection;
         }
     }
