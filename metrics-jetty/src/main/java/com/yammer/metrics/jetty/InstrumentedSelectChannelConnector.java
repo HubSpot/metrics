@@ -6,13 +6,10 @@ import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.core.Timer;
 
-import org.eclipse.jetty.http.HttpHeaders;
 import org.eclipse.jetty.io.AsyncEndPoint;
-import org.eclipse.jetty.io.Buffer;
 import org.eclipse.jetty.io.Connection;
 import org.eclipse.jetty.io.EndPoint;
 import org.eclipse.jetty.io.nio.AsyncConnection;
-import org.eclipse.jetty.server.AbstractHttpConnection;
 import org.eclipse.jetty.server.AsyncHttpConnection;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
