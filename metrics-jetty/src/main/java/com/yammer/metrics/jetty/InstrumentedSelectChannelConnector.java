@@ -5,14 +5,23 @@ import com.yammer.metrics.core.Counter;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.MetricsRegistry;
 import com.yammer.metrics.core.Timer;
+
+import org.eclipse.jetty.io.AsyncEndPoint;
 import org.eclipse.jetty.io.Connection;
+import org.eclipse.jetty.io.EndPoint;
+import org.eclipse.jetty.io.nio.AsyncConnection;
+import org.eclipse.jetty.server.AsyncHttpConnection;
+import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.nio.SelectChannelConnector;
 
 import java.io.IOException;
+import java.nio.channels.SocketChannel;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
-    private final Timer duration;
+    private final Timer connectionDuration, queueDuration, requestAndQueueDuration;
     private final Meter accepts, connects, disconnects;
     private final Counter connections;
 
@@ -24,11 +33,21 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
                                               int port) {
         super();
         setPort(port);
-        this.duration = registry.newTimer(SelectChannelConnector.class,
-                                          "connection-duration",
-                                          Integer.toString(port),
-                                          TimeUnit.MILLISECONDS,
-                                          TimeUnit.SECONDS);
+        this.connectionDuration = registry.newTimer(SelectChannelConnector.class,
+                                                    "connection-duration",
+                                                    Integer.toString(port),
+                                                    TimeUnit.MILLISECONDS,
+                                                    TimeUnit.SECONDS);
+        this.queueDuration = registry.newTimer(SelectChannelConnector.class,
+                                           "queue-duration",
+                                           Integer.toString(port),
+                                           TimeUnit.MILLISECONDS,
+                                           TimeUnit.SECONDS);
+        this.requestAndQueueDuration = registry.newTimer(SelectChannelConnector.class,
+                                                         "request-and-queue-duration",
+                                                         Integer.toString(port),
+                                                         TimeUnit.MILLISECONDS,
+                                                         TimeUnit.SECONDS);
         this.accepts = registry.newMeter(SelectChannelConnector.class,
                                          "accepts",
                                          Integer.toString(port),
@@ -56,6 +75,11 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
     }
 
     @Override
+    protected AsyncConnection newConnection(SocketChannel channel, AsyncEndPoint endpoint) {
+        return new InstrumentedAsyncHttpConnection(this, endpoint, getServer(), queueDuration, requestAndQueueDuration);
+    }
+
+    @Override
     protected void connectionOpened(Connection connection) {
         connections.inc();
         super.connectionOpened(connection);
@@ -67,7 +91,37 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
         super.connectionClosed(connection);
         disconnects.mark();
         final long duration = System.currentTimeMillis() - connection.getTimeStamp();
-        this.duration.update(duration, TimeUnit.MILLISECONDS);
+        this.connectionDuration.update(duration, TimeUnit.MILLISECONDS);
         connections.dec();
+    }
+
+    private static class InstrumentedAsyncHttpConnection extends AsyncHttpConnection {
+        private final Timer queueDuration;
+        private final Timer requestAndQueueDuration;
+        private final AtomicBoolean marked;
+
+        public InstrumentedAsyncHttpConnection(Connector connector,
+                                               EndPoint endpoint,
+                                               Server server,
+                                               Timer queueDuration,
+                                               Timer requestAndQueueDuration) {
+            super(connector, endpoint, server);
+            this.queueDuration = queueDuration;
+            this.requestAndQueueDuration = requestAndQueueDuration;
+            this.marked = new AtomicBoolean(false);
+        }
+
+        @Override
+        public Connection handle() throws IOException {
+            if (!marked.compareAndSet(false, true)) {
+                return super.handle();
+            }
+
+            queueDuration.update(System.currentTimeMillis() - getTimeStamp(), TimeUnit.MILLISECONDS);
+
+            Connection connection = super.handle();
+            requestAndQueueDuration.update(System.currentTimeMillis() - getTimeStamp(), TimeUnit.MILLISECONDS);
+            return connection;
+        }
     }
 }
