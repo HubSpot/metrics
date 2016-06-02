@@ -1,5 +1,6 @@
 package com.yammer.metrics.core;
 
+import java.io.Closeable;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -7,7 +8,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @see Timer#time()
  */
-public class TimerContext {
+public class TimerContext implements Closeable {
     private final Timer timer;
     private final Clock clock;
     private final long startTime;
@@ -29,5 +30,10 @@ public class TimerContext {
      */
     public void stop() {
         timer.update(clock.tick() - startTime, TimeUnit.NANOSECONDS);
+    }
+
+    @Override
+    public void close() {
+        stop();
     }
 }
