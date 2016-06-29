@@ -48,10 +48,7 @@ public class MetricName implements Comparable<MetricName> {
      * @param scope the scope of the {@link Metric}
      */
     public MetricName(Class<?> klass, String name, String scope) {
-        this(klass.getPackage() == null ? "" : klass.getPackage().getName(),
-             klass.getSimpleName().replaceAll("\\$$", ""),
-             name,
-             scope);
+        this(packageName(klass), className(klass), name, scope);
     }
 
     /**
@@ -103,11 +100,7 @@ public class MetricName implements Comparable<MetricName> {
      * @param scope the scope of the {@link Metric}
      */
     public MetricName(Class<?> klass, String name, String scope, Map<String, String> tags) {
-        this(klass.getPackage() == null ? "" : klass.getPackage().getName(),
-            klass.getSimpleName().replaceAll("\\$$", ""),
-            name,
-            scope,
-            tags);
+        this(packageName(klass), className(klass), name, scope, tags);
     }
 
     /**
@@ -262,7 +255,7 @@ public class MetricName implements Comparable<MetricName> {
      */
     public static String chooseGroup(String group, Class<?> klass) {
         if(group == null || group.isEmpty()) {
-            group = klass.getPackage() == null ? "" : klass.getPackage().getName();
+            group = packageName(klass);
         }
         return group;
     }
@@ -275,7 +268,7 @@ public class MetricName implements Comparable<MetricName> {
      */
     public static String chooseType(String type, Class<?> klass) {
         if(type == null || type.isEmpty()) {
-            type = klass.getSimpleName().replaceAll("\\$$", ""); 
+            type = className(klass);
         }
         return type;
     }
@@ -291,5 +284,23 @@ public class MetricName implements Comparable<MetricName> {
             name = method.getName();
         }
         return name;
+    }
+
+    private static String packageName(Class<?> klass) {
+        klass = unwrap(klass);
+        return klass.getPackage() == null ? "" : klass.getPackage().getName();
+    }
+
+    private static String className(Class<?> klass) {
+        return unwrap(klass).getSimpleName().replaceAll("\\$$", "");
+    }
+
+    private static Class<?> unwrap(Class<?> klass) {
+        Class<?> unwrapped = klass;
+        while (unwrapped.getName().contains("$EnhancerByGuice$") && unwrapped.getSuperclass() != null) {
+            unwrapped = unwrapped.getSuperclass();
+        }
+
+        return unwrapped;
     }
 }
