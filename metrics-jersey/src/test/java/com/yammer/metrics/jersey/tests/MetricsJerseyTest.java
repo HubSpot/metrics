@@ -41,7 +41,7 @@ public class MetricsJerseyTest extends JerseyTest {
 
         final Timer timer = Metrics.newTimer(InstrumentedResource.class, "timed");
         assertThat(timer.count(),
-                   is(1L));
+                   is(0L));
     }
 
     @Test
@@ -51,7 +51,7 @@ public class MetricsJerseyTest extends JerseyTest {
 
         final Meter meter = Metrics.newMeter(InstrumentedResource.class, "metered", "blah", TimeUnit.SECONDS);
         assertThat(meter.count(),
-                   is(1L));
+                   is(0L));
     }
 
     @Test
@@ -73,6 +73,6 @@ public class MetricsJerseyTest extends JerseyTest {
         }
 
         assertThat(meter.count(),
-                   is(1L));
+                   is(0L));
     }
 }

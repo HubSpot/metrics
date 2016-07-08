@@ -9,6 +9,6 @@ import javax.ws.rs.ext.Provider;
 public class InstrumentedResourceMethodDispatchAdapter implements ResourceMethodDispatchAdapter {
     @Override
     public ResourceMethodDispatchProvider adapt(ResourceMethodDispatchProvider provider) {
-        return new InstrumentedResourceMethodDispatchProvider(provider);
+        return provider;
     }
 }
