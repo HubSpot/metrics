@@ -184,6 +184,7 @@ public class InstrumentedHandler extends HandlerWrapper {
         final boolean isMilliseconds;
 
         if (continuation.isInitial()) {
+            request.setDispatchTime(request.getConnection().getTimeStamp());
             activeRequests.inc();
             start = request.getTimeStamp();
             isMilliseconds = true;
