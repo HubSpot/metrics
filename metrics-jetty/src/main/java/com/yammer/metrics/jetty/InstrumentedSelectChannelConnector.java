@@ -18,7 +18,7 @@ import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
     private final Timer connectionDuration, queueDuration, requestAndQueueDuration;
@@ -98,7 +98,7 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
     private static class InstrumentedAsyncHttpConnection extends AsyncHttpConnection {
         private final Timer queueDuration;
         private final Timer requestAndQueueDuration;
-        private final AtomicBoolean marked;
+        private final AtomicInteger requests;
 
         public InstrumentedAsyncHttpConnection(Connector connector,
                                                EndPoint endpoint,
@@ -108,12 +108,12 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
             super(connector, endpoint, server);
             this.queueDuration = queueDuration;
             this.requestAndQueueDuration = requestAndQueueDuration;
-            this.marked = new AtomicBoolean(false);
+            this.requests = new AtomicInteger();
         }
 
         @Override
         public Connection handle() throws IOException {
-            if (!marked.compareAndSet(false, true)) {
+            if (!(requests.getAndIncrement() == 0)) {
                 return super.handle();
             }
 
@@ -122,6 +122,11 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
             Connection connection = super.handle();
             requestAndQueueDuration.update(System.currentTimeMillis() - getTimeStamp(), TimeUnit.MILLISECONDS);
             return connection;
+        }
+
+        @Override
+        public int getRequests() {
+            return requests.get();
         }
     }
 }
