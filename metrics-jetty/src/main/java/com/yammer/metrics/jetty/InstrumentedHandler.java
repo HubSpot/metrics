@@ -185,7 +185,7 @@ public class InstrumentedHandler extends HandlerWrapper {
 
         if (continuation.isInitial()) {
             if (request.getConnection().getRequests() == 0) {
-                request.setDispatchTime(request.getConnection().getTimeStamp());
+                //request.setDispatchTime(request.getConnection().getTimeStamp());
             }
             activeRequests.inc();
             start = request.getTimeStamp();
