@@ -113,14 +113,13 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
 
         @Override
         public Connection handle() throws IOException {
-            if (!(requests.getAndIncrement() == 0)) {
-                return super.handle();
-            }
-
-            queueDuration.update(System.currentTimeMillis() - getTimeStamp(), TimeUnit.MILLISECONDS);
-
+            long startHandle = System.currentTimeMillis();
             Connection connection = super.handle();
-            requestAndQueueDuration.update(System.currentTimeMillis() - getTimeStamp(), TimeUnit.MILLISECONDS);
+            long endHandle = System.currentTimeMillis();
+            if (requests.getAndIncrement() == 0) {
+                queueDuration.update(startHandle - getTimeStamp(), TimeUnit.MILLISECONDS);
+                requestAndQueueDuration.update(endHandle - getTimeStamp(), TimeUnit.MILLISECONDS);
+            }
             return connection;
         }
 
