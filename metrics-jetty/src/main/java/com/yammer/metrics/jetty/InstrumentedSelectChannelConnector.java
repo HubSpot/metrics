@@ -14,13 +14,19 @@ import org.eclipse.jetty.server.AsyncHttpConnection;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.nio.SelectChannelConnector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
+    private static final Logger LOGGER = LoggerFactory.getLogger(InstrumentedSelectChannelConnector.class);
+    private static final List<RequestDurationTracker> REQUEST_DURATION_TRACKERS = new CopyOnWriteArrayList<RequestDurationTracker>();
     private final Timer connectionDuration, queueDuration, requestAndQueueDuration;
     private final Meter accepts, connects, disconnects;
     private final Counter connections;
@@ -117,15 +123,56 @@ public class InstrumentedSelectChannelConnector extends SelectChannelConnector {
                 return super.handle();
             }
 
-            queueDuration.update(System.currentTimeMillis() - getTimeStamp(), TimeUnit.MILLISECONDS);
+            long duration = System.currentTimeMillis() - getTimeStamp();
+            queueDuration.update(duration, TimeUnit.MILLISECONDS);
+            trackQueueDuration(duration);
+
             Connection connection = super.handle();
-            requestAndQueueDuration.update(System.currentTimeMillis() - getTimeStamp(), TimeUnit.MILLISECONDS);
+
+            duration = System.currentTimeMillis() - getTimeStamp();
+            requestAndQueueDuration.update(duration, TimeUnit.MILLISECONDS);
+            trackRequestAndQueueDuration(duration);
+
             return connection;
         }
 
         @Override
         public int getRequests() {
             return requests.get();
+        }
+    }
+
+    /**
+     * Register a connection metric tracker to track queue and connection times
+     * as they occur.
+     * DO NOT BLOCK IN ConnectionMetricTracker CALLS AS THEY WILL BLOCK THE REQUEST THREAD
+     * @param requestDurationTracker - The tracker which accepts timings in real time
+     */
+    public static void registerConnectionMetricTracker(RequestDurationTracker requestDurationTracker) {
+        REQUEST_DURATION_TRACKERS.add(requestDurationTracker);
+    }
+
+    public static void unregisterConnectionMetricTracker(RequestDurationTracker requestDurationTracker) {
+        REQUEST_DURATION_TRACKERS.remove(requestDurationTracker);
+    }
+
+    private static void trackQueueDuration(long queueDurationMillis) {
+        for (RequestDurationTracker requestDurationTracker : REQUEST_DURATION_TRACKERS) {
+            try {
+                requestDurationTracker.acceptQueueTime(queueDurationMillis, TimeUnit.MILLISECONDS);
+            } catch (Exception e) {
+                LOGGER.error("Unexpected exception while tracking queue time.", e);
+            }
+        }
+    }
+
+    private static void trackRequestAndQueueDuration(long requestAndQueueDurationMillis) {
+        for (RequestDurationTracker requestDurationTracker : REQUEST_DURATION_TRACKERS) {
+            try {
+                requestDurationTracker.acceptRequestAndQueueTime(requestAndQueueDurationMillis, TimeUnit.MILLISECONDS);
+            } catch (Exception e) {
+                LOGGER.error("Unexpected exception while tracking queue and connection time.", e);
+            }
         }
     }
 }
