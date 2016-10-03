@@ -85,6 +85,62 @@ public class MetricsRegistry {
     }
 
     /**
+     * Given a new {@link Gauge}, creates a {@link PollingGauge} and registers it under the given metric name.
+     * By default the gauge will be polled once per second.
+     *
+     * @param metricName the name of the metric
+     * @param metric     the metric
+     * @return {@code metric}
+     */
+    public Gauge<Integer> newPollingIntegerGauge(MetricName metricName, Gauge<Integer> metric) {
+        return newPollingIntegerGauge(metricName, metric, 1, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Given a new {@link Gauge}, creates a {@link PollingGauge} registers it under the given metric name.
+     *
+     * @param metricName       the name of the metric
+     * @param metric           the metric
+     * @param pollInterval     how frequently to poll the gauge
+     * @param pollIntervalUnit the time unit of the poll interval
+     * @return {@code metric}
+     */
+    public Gauge<Integer> newPollingIntegerGauge(MetricName metricName,
+                                                 Gauge<Integer> metric,
+                                                 long pollInterval,
+                                                 TimeUnit pollIntervalUnit) {
+        return newGauge(metricName, new PollingGauge<Integer>(metric, newGaugePollThreadPool(), pollInterval, pollIntervalUnit));
+    }
+
+    /**
+     * Given a new {@link Gauge}, creates a {@link PollingGauge} registers it under the given metric name.
+     * By default the gauge will be polled once per second.
+     *
+     * @param metricName the name of the metric
+     * @param metric     the metric
+     * @return {@code metric}
+     */
+    public Gauge<Long> newPollingLongGauge(MetricName metricName, Gauge<Long> metric) {
+        return newPollingLongGauge(metricName, metric, 1, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Given a new {@link Gauge}, creates a {@link PollingGauge} registers it under the given metric name.
+     *
+     * @param metricName       the name of the metric
+     * @param metric           the metric
+     * @param pollInterval     how frequently to poll the gauge
+     * @param pollIntervalUnit the time unit of the poll interval
+     * @return {@code metric}
+     */
+    public Gauge<Long> newPollingLongGauge(MetricName metricName,
+                                           Gauge<Long> metric,
+                                           long pollInterval,
+                                           TimeUnit pollIntervalUnit) {
+        return newGauge(metricName, new PollingGauge<Long>(metric, newGaugePollThreadPool(), pollInterval, pollIntervalUnit));
+    }
+
+    /**
      * Creates a new {@link Counter} and registers it under the given class and name.
      *
      * @param klass the class which owns the metric
@@ -522,6 +578,10 @@ public class MetricsRegistry {
 
     private ScheduledExecutorService newMeterTickThreadPool() {
         return threadPools.newScheduledThreadPool(2, "meter-tick");
+    }
+
+    private ScheduledExecutorService newGaugePollThreadPool() {
+        return threadPools.newScheduledThreadPool(1, "gauge-poll");
     }
 
     private void notifyMetricRemoved(MetricName name) {
