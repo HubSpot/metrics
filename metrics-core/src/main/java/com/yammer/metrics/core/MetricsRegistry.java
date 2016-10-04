@@ -109,13 +109,7 @@ public class MetricsRegistry {
                                             Gauge<Integer> metric,
                                             long pollInterval,
                                             TimeUnit pollIntervalUnit) {
-        Histogram histogram = new Histogram(SampleType.BIASED);
-        Histogram added = getOrAdd(metricName, histogram);
-        if (added == histogram) {
-            PollingGauge.poll(metric, histogram, newGaugePollThreadPool(), pollInterval, pollIntervalUnit);
-        }
-
-        return added;
+        return newPollingGauge(metricName, metric, pollInterval, pollIntervalUnit);
     }
 
     /**
@@ -143,10 +137,18 @@ public class MetricsRegistry {
                                          Gauge<Long> metric,
                                          long pollInterval,
                                          TimeUnit pollIntervalUnit) {
-        Histogram histogram = new Histogram(SampleType.BIASED);
+        return newPollingGauge(metricName, metric, pollInterval, pollIntervalUnit);
+    }
+
+    private <T extends Number> Histogram newPollingGauge(MetricName metricName,
+                                                         Gauge<T> metric,
+                                                         long pollInterval,
+                                                         TimeUnit pollIntervalUnit) {
+        StoppableHistogram histogram = new StoppableHistogram(SampleType.BIASED);
         Histogram added = getOrAdd(metricName, histogram);
         if (added == histogram) {
-            PollingGauge.poll(metric, histogram, newGaugePollThreadPool(), pollInterval, pollIntervalUnit);
+            Stoppable stoppable = PollingGauge.poll(metric, histogram, newGaugePollThreadPool(), pollInterval, pollIntervalUnit);
+            histogram.setStoppable(stoppable);
         }
 
         return added;

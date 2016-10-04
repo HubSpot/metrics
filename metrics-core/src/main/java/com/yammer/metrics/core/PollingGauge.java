@@ -29,11 +29,12 @@ class PollingGauge<T extends Number> extends Gauge<T> implements Stoppable {
     }, pollInterval, pollInterval, pollIntervalUnit);
   }
 
-  static <T extends Number> void poll(Gauge<T> delegate,
-                                      Histogram histogram, ScheduledExecutorService pollThread,
-                                      long pollInterval,
-                                      TimeUnit pollIntervalUnit) {
-    new PollingGauge<T>(delegate, histogram, pollThread, pollInterval, pollIntervalUnit);
+  static <T extends Number> Stoppable poll(Gauge<T> delegate,
+                                           Histogram histogram,
+                                           ScheduledExecutorService pollThread,
+                                           long pollInterval,
+                                           TimeUnit pollIntervalUnit) {
+    return new PollingGauge<T>(delegate, histogram, pollThread, pollInterval, pollIntervalUnit);
   }
 
   @Override
