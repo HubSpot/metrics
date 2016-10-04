@@ -92,7 +92,7 @@ public class MetricsRegistry {
      * @param metric     the metric
      * @return {@code metric}
      */
-    public Gauge<Integer> newPollingIntegerGauge(MetricName metricName, Gauge<Integer> metric) {
+    public Histogram newPollingIntegerGauge(MetricName metricName, Gauge<Integer> metric) {
         return newPollingIntegerGauge(metricName, metric, 1, TimeUnit.SECONDS);
     }
 
@@ -105,11 +105,17 @@ public class MetricsRegistry {
      * @param pollIntervalUnit the time unit of the poll interval
      * @return {@code metric}
      */
-    public Gauge<Integer> newPollingIntegerGauge(MetricName metricName,
-                                                 Gauge<Integer> metric,
-                                                 long pollInterval,
-                                                 TimeUnit pollIntervalUnit) {
-        return newGauge(metricName, new PollingGauge<Integer>(metric, newGaugePollThreadPool(), pollInterval, pollIntervalUnit));
+    public Histogram newPollingIntegerGauge(MetricName metricName,
+                                            Gauge<Integer> metric,
+                                            long pollInterval,
+                                            TimeUnit pollIntervalUnit) {
+        Histogram histogram = new Histogram(SampleType.BIASED);
+        Histogram added = getOrAdd(metricName, histogram);
+        if (added == histogram) {
+            PollingGauge.poll(metric, histogram, newGaugePollThreadPool(), pollInterval, pollIntervalUnit);
+        }
+
+        return added;
     }
 
     /**
@@ -120,7 +126,7 @@ public class MetricsRegistry {
      * @param metric     the metric
      * @return {@code metric}
      */
-    public Gauge<Long> newPollingLongGauge(MetricName metricName, Gauge<Long> metric) {
+    public Histogram newPollingLongGauge(MetricName metricName, Gauge<Long> metric) {
         return newPollingLongGauge(metricName, metric, 1, TimeUnit.SECONDS);
     }
 
@@ -133,11 +139,17 @@ public class MetricsRegistry {
      * @param pollIntervalUnit the time unit of the poll interval
      * @return {@code metric}
      */
-    public Gauge<Long> newPollingLongGauge(MetricName metricName,
-                                           Gauge<Long> metric,
-                                           long pollInterval,
-                                           TimeUnit pollIntervalUnit) {
-        return newGauge(metricName, new PollingGauge<Long>(metric, newGaugePollThreadPool(), pollInterval, pollIntervalUnit));
+    public Histogram newPollingLongGauge(MetricName metricName,
+                                         Gauge<Long> metric,
+                                         long pollInterval,
+                                         TimeUnit pollIntervalUnit) {
+        Histogram histogram = new Histogram(SampleType.BIASED);
+        Histogram added = getOrAdd(metricName, histogram);
+        if (added == histogram) {
+            PollingGauge.poll(metric, histogram, newGaugePollThreadPool(), pollInterval, pollIntervalUnit);
+        }
+
+        return added;
     }
 
     /**
