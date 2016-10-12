@@ -1,5 +1,3 @@
-enabled: true
-
 stepActivation:
   notify:
     branches: [master, hubspot]
