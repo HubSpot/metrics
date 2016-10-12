@@ -1,1 +1,7 @@
 enabled: true
+
+stepActivation:
+  upload:
+    branches: [master, hubspot]
+  notify:
+    branches: [master, hubspot]
