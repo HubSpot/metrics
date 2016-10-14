@@ -63,12 +63,17 @@ public class MeteredTest {
 
     @Test
     public void aMeteredAnnotatedMethodWithDefaultScope() throws Exception {
-        instance.doAThingWithDefaultScope();
 
         final Metric metric = registry.allMetrics()
                                       .get(new MetricName(InstrumentedWithMetered.class,
                                                           "doAThingWithDefaultScope"));
         assertMetricIsSetup(metric);
+
+        assertThat("Metric intialises to zero",
+                   ((Meter) metric).count(),
+                   is(0L));
+
+        instance.doAThingWithDefaultScope();
 
         assertThat("Metric is marked",
                    ((Meter) metric).count(),
@@ -77,12 +82,18 @@ public class MeteredTest {
 
     @Test
     public void aMeteredAnnotatedMethodWithProtectedScope() throws Exception {
-        instance.doAThingWithProtectedScope();
 
         final Metric metric = registry.allMetrics()
                                       .get(new MetricName(InstrumentedWithMetered.class,
                                                           "doAThingWithProtectedScope"));
+
         assertMetricIsSetup(metric);
+
+        assertThat("Metric intialises to zero",
+                   ((Meter) metric).count(),
+                   is(0L));
+
+        instance.doAThingWithProtectedScope();
 
         assertThat("Metric is marked",
                    ((Meter) metric).count(),
@@ -91,10 +102,16 @@ public class MeteredTest {
 
     @Test
     public void aMeteredAnnotatedMethodWithGroupTypeAndName() throws Exception {
-        instance.doAThingWithGroupTypeAndName();
 
         final Metric metric = registry.allMetrics().get(new MetricName("g", "t", "n"));
+
         assertMetricIsSetup(metric);
+
+        assertThat("Metric intialises to zero",
+                   ((Meter) metric).count(),
+                   is(0L));
+
+        instance.doAThingWithGroupTypeAndName();
 
         assertThat("Metric is marked",
                    ((Meter) metric).count(),
