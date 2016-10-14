@@ -31,61 +31,47 @@ public class MeteredClassTest {
 	@Autowired
 	MetricsRegistry metricsRegistry;
 
+	Gauge<Object> gaugedField;
+	Gauge<Object> gaugedMethod;
+	Timer timedMethod;
+	Meter meteredMethod;
+	Meter exceptionMeteredMethod;
+	Timer triple_Timed;
+	Meter triple_Metered;
+	Meter triple_ExceptionMetered;
+	
+	@Before
 	@SuppressWarnings(value = "unchecked")
-	private Gauge<Object> fieldGauge() {
-		return (Gauge<Object>) metricsRegistry.allMetrics().get(new MetricName(MeteredClass.class, "gaugedField"));
-	}
+	public void init() {
+		Map<MetricName, Metric> metrics = metricsRegistry.allMetrics();
 
-	@SuppressWarnings(value = "unchecked")
-	private Gauge<Object> methodGauge() {
-		return (Gauge<Object>) metricsRegistry.allMetrics().get(new MetricName(MeteredClass.class, "gaugedMethod"));
-	}
-
-	@SuppressWarnings(value = "unchecked")
-	private Timer methodTimer() {
-		return (Timer) metricsRegistry.allMetrics().get(new MetricName(MeteredClass.class, "timedMethod"));
-	}
-
-	@SuppressWarnings(value = "unchecked")
-	private Meter methodMeter() {
-		return (Meter) metricsRegistry.allMetrics().get(new MetricName(MeteredClass.class, "meteredMethod"));
-	}
-
-	@SuppressWarnings(value = "unchecked")
-	private Meter methodExceptionMeter() {
-		return (Meter) metricsRegistry.allMetrics().get(new MetricName(MeteredClass.class, "exceptionMeteredMethodExceptions"));
-	}
-
-	@SuppressWarnings(value = "unchecked")
-	private Timer triplyMeteredMethodTimer() {
-		return (Timer) metricsRegistry.allMetrics().get(new MetricName(MeteredClass.class, "triplyMeteredMethod-timed"));
-	}
-
-	@SuppressWarnings(value = "unchecked")
-	private Meter triplyMeteredMethodMeter() {
-		return (Meter) metricsRegistry.allMetrics().get(new MetricName(MeteredClass.class, "triplyMeteredMethod-metered"));
-	}
-
-	@SuppressWarnings(value = "unchecked")
-	private Meter triplyMeteredMethodExceptionMeter() {
-		return (Meter) metricsRegistry.allMetrics().get(new MetricName(MeteredClass.class, "triplyMeteredMethod-exceptionMetered"));
+		gaugedField = (Gauge<Object>) metrics.get(new MetricName(MeteredClass.class, "gaugedField"));
+		gaugedMethod = (Gauge<Object>) metrics.get(new MetricName(MeteredClass.class, "gaugedMethod"));
+		timedMethod = (Timer) metrics.get(new MetricName(MeteredClass.class, "timedMethod"));
+		meteredMethod = (Meter) metrics.get(new MetricName(MeteredClass.class, "meteredMethod"));
+		exceptionMeteredMethod = (Meter) metrics.get(new MetricName(MeteredClass.class, "exceptionMeteredMethodExceptions"));
+		triple_Timed = (Timer) metrics.get(new MetricName(MeteredClass.class, "triplyMeteredMethod-timed"));
+		triple_Metered = (Meter) metrics.get(new MetricName(MeteredClass.class, "triplyMeteredMethod-metered"));
+		triple_ExceptionMetered = (Meter) metrics.get(new MetricName(MeteredClass.class, "triplyMeteredMethod-exceptionMetered"));
 	}
 
 	@Test
 	public void gauges() {
-		assertEquals(999, fieldGauge().value());
-		assertEquals(999, methodGauge().value());
+		assertEquals(999, gaugedField.value());
+		assertEquals(999, gaugedMethod.value());
 
 		meteredClass.setGaugedField(1000);
 
-		assertEquals(1000, fieldGauge().value());
-		assertEquals(1000, methodGauge().value());
+		assertEquals(1000, gaugedField.value());
+		assertEquals(1000, gaugedMethod.value());
 	}
 
 	@Test
 	public void timedMethod() throws Throwable {
+		assertEquals(0, timedMethod.count());
+
 		meteredClass.timedMethod(false);
-		assertEquals(1, methodTimer().count());
+		assertEquals(1, timedMethod.count());
 
 		// count increments even when the method throws an exception
 		try {
@@ -94,17 +80,34 @@ public class MeteredClassTest {
 		} catch (Throwable e) {
 			assertTrue(e instanceof BogusException);
 		}
-		assertEquals(2, methodTimer().count());
+		assertEquals(2, timedMethod.count());
 	}
 
 	@Test
 	public void meteredMethod() throws Throwable {
+		assertEquals(0, meteredMethod.count());
+
 		meteredClass.meteredMethod();
-		assertEquals(1, methodMeter().count());
+		assertEquals(1, meteredMethod.count());
 	}
 
 	@Test
 	public void exceptionMeteredMethod() throws Throwable {
+		assertEquals(0, exceptionMeteredMethod.count());
+
+		// doesn't throw an exception
+		meteredClass.exceptionMeteredMethod(null);
+		assertEquals(0, exceptionMeteredMethod.count());
+
+		// throws the wrong exception
+		try {
+			meteredClass.exceptionMeteredMethod(RuntimeException.class);
+			fail();
+		} catch (Throwable t) {
+			assertTrue(t instanceof RuntimeException);
+		}
+		assertEquals(0, exceptionMeteredMethod.count());
+
 		// throws the right exception
 		try {
 			meteredClass.exceptionMeteredMethod(BogusException.class);
@@ -112,15 +115,20 @@ public class MeteredClassTest {
 		} catch (Throwable t) {
 			assertTrue(t instanceof BogusException);
 		}
-		assertEquals(1, methodExceptionMeter().count());
+		assertEquals(1, exceptionMeteredMethod.count());
 	}
 
 	@Test
 	public void triplyMeteredMethod() throws Throwable {
+		assertEquals(0, triple_Metered.count());
+		assertEquals(0, triple_Timed.count());
+		assertEquals(0, triple_ExceptionMetered.count());
+
 		// doesn't throw an exception
 		meteredClass.triplyMeteredMethod(false);
-		assertEquals(1, triplyMeteredMethodMeter().count());
-		assertEquals(1, triplyMeteredMethodTimer().count());
+		assertEquals(1, triple_Metered.count());
+		assertEquals(1, triple_Timed.count());
+		assertEquals(0, triple_ExceptionMetered.count());
 
 		// throws an exception
 		try {
@@ -129,8 +137,8 @@ public class MeteredClassTest {
 		} catch (Throwable t) {
 			assertTrue(t instanceof BogusException);
 		}
-		assertEquals(2, triplyMeteredMethodMeter().count());
-		assertEquals(2, triplyMeteredMethodTimer().count());
-		assertEquals(1, triplyMeteredMethodExceptionMeter().count());
+		assertEquals(2, triple_Metered.count());
+		assertEquals(2, triple_Timed.count());
+		assertEquals(1, triple_ExceptionMetered.count());
 	}
 }
