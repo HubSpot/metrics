@@ -29,7 +29,7 @@ public class ExponentiallyDecayingSample implements Sample {
     private final double alpha;
     private final int reservoirSize;
     private final AtomicLong count = new AtomicLong(0);
-    private volatile long startTime;
+    private volatile int startTime;
     private final AtomicLong nextScaleTime = new AtomicLong(0);
     private final Clock clock;
     private final int maxAge = 300;
@@ -84,13 +84,17 @@ public class ExponentiallyDecayingSample implements Sample {
         update(value, currentTimeInSeconds());
     }
 
+    public void update(long value, long timestamp) {
+        update(value, (int) timestamp);
+    }
+
     /**
      * Adds an old value with a fixed timestamp to the sample.
      *
      * @param value     the value to be added
      * @param timestamp the epoch timestamp of {@code value} in seconds
      */
-    public void update(long value, long timestamp) {
+    public void update(long value, int timestamp) {
 
         rescaleIfNeeded();
 
@@ -132,11 +136,11 @@ public class ExponentiallyDecayingSample implements Sample {
         lockForRegularUsage();
         try {
             Collection<ValueWithTimestamp> valuesWithTimestamps = values.values();
-            long now = currentTimeInSeconds();
+            int now = currentTimeInSeconds();
 
             List<Long> values = new ArrayList<Long>();
             for (ValueWithTimestamp valueWithTimestamp : valuesWithTimestamps) {
-                long age = now - valueWithTimestamp.getTimestamp();
+                int age = now - valueWithTimestamp.getTimestamp();
                 if (age < maxAge) {
                     values.add(valueWithTimestamp.getValue());
                 }
@@ -147,8 +151,8 @@ public class ExponentiallyDecayingSample implements Sample {
         }
     }
 
-    private long currentTimeInSeconds() {
-        return TimeUnit.MILLISECONDS.toSeconds(clock.time());
+    private int currentTimeInSeconds() {
+        return (int) TimeUnit.MILLISECONDS.toSeconds(clock.time());
     }
 
     private double weight(long t) {
@@ -182,7 +186,7 @@ public class ExponentiallyDecayingSample implements Sample {
                 final ArrayList<Double> keys = new ArrayList<Double>(values.keySet());
                 for (Double key : keys) {
                     final ValueWithTimestamp value = values.remove(key);
-                    long age = this.startTime - value.getTimestamp();
+                    int age = startTime - value.getTimestamp();
                     if (age < maxAge) {
                         values.put(key * exp(-alpha * (startTime - oldStartTime)), value);
                     }
@@ -214,9 +218,9 @@ public class ExponentiallyDecayingSample implements Sample {
 
     private static class ValueWithTimestamp {
         private final long value;
-        private final long timestamp;
+        private final int timestamp;
 
-        private ValueWithTimestamp(long value, long timestamp) {
+        private ValueWithTimestamp(long value, int timestamp) {
             this.value = value;
             this.timestamp = timestamp;
         }
@@ -225,7 +229,7 @@ public class ExponentiallyDecayingSample implements Sample {
             return value;
         }
 
-        public long getTimestamp() {
+        public int getTimestamp() {
             return timestamp;
         }
     }
