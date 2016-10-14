@@ -24,12 +24,13 @@ import static java.lang.Math.min;
  */
 public class ExponentiallyDecayingSample implements Sample {
     private static final long RESCALE_THRESHOLD = TimeUnit.HOURS.toNanos(1);
-    private final ConcurrentSkipListMap<Double, ValueWithTimestamp> values;
+    private final ConcurrentSkipListMap<Double, ValueWithOffset> values;
     private final ReentrantReadWriteLock lock;
     private final double alpha;
     private final int reservoirSize;
     private final AtomicLong count = new AtomicLong(0);
-    private volatile int startTime;
+    private final long baseTime;
+    private volatile int startOffset;
     private final AtomicLong nextScaleTime = new AtomicLong(0);
     private final Clock clock;
     private final int maxAge = 300;
@@ -53,11 +54,12 @@ public class ExponentiallyDecayingSample implements Sample {
      *                      sample will be towards newer values
      */
     public ExponentiallyDecayingSample(int reservoirSize, double alpha, Clock clock) {
-        this.values = new ConcurrentSkipListMap<Double, ValueWithTimestamp>();
+        this.values = new ConcurrentSkipListMap<Double, ValueWithOffset>();
         this.lock = new ReentrantReadWriteLock();
         this.alpha = alpha;
         this.reservoirSize = reservoirSize;
         this.clock = clock;
+        this.baseTime = currentTimeInSeconds();
         clear();
     }
 
@@ -67,7 +69,7 @@ public class ExponentiallyDecayingSample implements Sample {
         try {
             values.clear();
             count.set(0);
-            this.startTime = currentTimeInSeconds();
+            this.startOffset = currentOffset();
             nextScaleTime.set(clock.tick() + RESCALE_THRESHOLD);
         } finally {
             unlockForRescale();
@@ -81,34 +83,21 @@ public class ExponentiallyDecayingSample implements Sample {
 
     @Override
     public void update(long value) {
-        update(value, currentTimeInSeconds());
-    }
-
-    public void update(long value, long timestamp) {
-        update(value, (int) timestamp);
-    }
-
-    /**
-     * Adds an old value with a fixed timestamp to the sample.
-     *
-     * @param value     the value to be added
-     * @param timestamp the epoch timestamp of {@code value} in seconds
-     */
-    public void update(long value, int timestamp) {
+        int offset = currentOffset();
 
         rescaleIfNeeded();
 
         lockForRegularUsage();
         try {
-            final double priority = weight(timestamp - startTime) / ThreadLocalRandom.current()
+            final double priority = weight(offset - startOffset) / ThreadLocalRandom.current()
                                                                                      .nextDouble();
             final long newCount = count.incrementAndGet();
             if (newCount <= reservoirSize) {
-                values.put(priority, new ValueWithTimestamp(value, timestamp));
+                values.put(priority, new ValueWithOffset(value, offset));
             } else {
                 Double first = values.firstKey();
                 if (first < priority) {
-                    if (values.putIfAbsent(priority, new ValueWithTimestamp(value, timestamp)) == null) {
+                    if (values.putIfAbsent(priority, new ValueWithOffset(value, offset)) == null) {
                         // ensure we always remove an item
                         while (values.remove(first) == null) {
                             first = values.firstKey();
@@ -135,14 +124,14 @@ public class ExponentiallyDecayingSample implements Sample {
     public Snapshot getSnapshot() {
         lockForRegularUsage();
         try {
-            Collection<ValueWithTimestamp> valuesWithTimestamps = values.values();
-            int now = currentTimeInSeconds();
+            Collection<ValueWithOffset> valuesWithOffsets = values.values();
+            int currentOffset = currentOffset();
 
             List<Long> values = new ArrayList<Long>();
-            for (ValueWithTimestamp valueWithTimestamp : valuesWithTimestamps) {
-                int age = now - valueWithTimestamp.getTimestamp();
+            for (ValueWithOffset valueWithOffset : valuesWithOffsets) {
+                int age = currentOffset - valueWithOffset.getOffset();
                 if (age < maxAge) {
-                    values.add(valueWithTimestamp.getValue());
+                    values.add(valueWithOffset.getValue());
                 }
             }
             return new Snapshot(values);
@@ -151,8 +140,12 @@ public class ExponentiallyDecayingSample implements Sample {
         }
     }
 
-    private int currentTimeInSeconds() {
-        return (int) TimeUnit.MILLISECONDS.toSeconds(clock.time());
+    private int currentOffset() {
+        return (int) (currentTimeInSeconds() - baseTime);
+    }
+
+    private long currentTimeInSeconds() {
+        return TimeUnit.MILLISECONDS.toSeconds(clock.time());
     }
 
     private double weight(long t) {
@@ -181,14 +174,14 @@ public class ExponentiallyDecayingSample implements Sample {
         if (nextScaleTime.compareAndSet(next, now + RESCALE_THRESHOLD)) {
             lockForRescale();
             try {
-                final long oldStartTime = startTime;
-                this.startTime = currentTimeInSeconds();
+                final int oldOffset = startOffset;
+                this.startOffset = currentOffset();
                 final ArrayList<Double> keys = new ArrayList<Double>(values.keySet());
                 for (Double key : keys) {
-                    final ValueWithTimestamp value = values.remove(key);
-                    int age = startTime - value.getTimestamp();
+                    final ValueWithOffset value = values.remove(key);
+                    int age = startOffset - value.getOffset();
                     if (age < maxAge) {
-                        values.put(key * exp(-alpha * (startTime - oldStartTime)), value);
+                        values.put(key * exp(-alpha * (startOffset - oldOffset)), value);
                     }
                 }
 
@@ -216,21 +209,21 @@ public class ExponentiallyDecayingSample implements Sample {
         lock.readLock().unlock();
     }
 
-    private static class ValueWithTimestamp {
+    private static class ValueWithOffset {
         private final long value;
-        private final int timestamp;
+        private final int offset;
 
-        private ValueWithTimestamp(long value, int timestamp) {
+        private ValueWithOffset(long value, int offset) {
             this.value = value;
-            this.timestamp = timestamp;
+            this.offset = offset;
         }
 
         public long getValue() {
             return value;
         }
 
-        public int getTimestamp() {
-            return timestamp;
+        public int getOffset() {
+            return offset;
         }
     }
 }
