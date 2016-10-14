@@ -3,6 +3,8 @@ package com.yammer.metrics.stats;
 import com.yammer.metrics.core.Clock;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,7 +24,7 @@ import static java.lang.Math.min;
  */
 public class ExponentiallyDecayingSample implements Sample {
     private static final long RESCALE_THRESHOLD = TimeUnit.HOURS.toNanos(1);
-    private final ConcurrentSkipListMap<Double, Long> values;
+    private final ConcurrentSkipListMap<Double, ValueWithTimestamp> values;
     private final ReentrantReadWriteLock lock;
     private final double alpha;
     private final int reservoirSize;
@@ -30,6 +32,7 @@ public class ExponentiallyDecayingSample implements Sample {
     private volatile long startTime;
     private final AtomicLong nextScaleTime = new AtomicLong(0);
     private final Clock clock;
+    private final int maxAge = 300;
 
     /**
      * Creates a new {@link ExponentiallyDecayingSample}.
@@ -50,7 +53,7 @@ public class ExponentiallyDecayingSample implements Sample {
      *                      sample will be towards newer values
      */
     public ExponentiallyDecayingSample(int reservoirSize, double alpha, Clock clock) {
-        this.values = new ConcurrentSkipListMap<Double, Long>();
+        this.values = new ConcurrentSkipListMap<Double, ValueWithTimestamp>();
         this.lock = new ReentrantReadWriteLock();
         this.alpha = alpha;
         this.reservoirSize = reservoirSize;
@@ -97,11 +100,11 @@ public class ExponentiallyDecayingSample implements Sample {
                                                                                      .nextDouble();
             final long newCount = count.incrementAndGet();
             if (newCount <= reservoirSize) {
-                values.put(priority, value);
+                values.put(priority, new ValueWithTimestamp(value, timestamp));
             } else {
                 Double first = values.firstKey();
                 if (first < priority) {
-                    if (values.putIfAbsent(priority, value) == null) {
+                    if (values.putIfAbsent(priority, new ValueWithTimestamp(value, timestamp)) == null) {
                         // ensure we always remove an item
                         while (values.remove(first) == null) {
                             first = values.firstKey();
@@ -128,7 +131,17 @@ public class ExponentiallyDecayingSample implements Sample {
     public Snapshot getSnapshot() {
         lockForRegularUsage();
         try {
-            return new Snapshot(values.values());
+            Collection<ValueWithTimestamp> valuesWithTimestamps = values.values();
+            long now = currentTimeInSeconds();
+
+            List<Long> values = new ArrayList<Long>();
+            for (ValueWithTimestamp valueWithTimestamp : valuesWithTimestamps) {
+                long age = now - valueWithTimestamp.getTimestamp();
+                if (age < maxAge) {
+                    values.add(valueWithTimestamp.getValue());
+                }
+            }
+            return new Snapshot(values);
         } finally {
             unlockForRegularUsage();
         }
@@ -168,8 +181,11 @@ public class ExponentiallyDecayingSample implements Sample {
                 this.startTime = currentTimeInSeconds();
                 final ArrayList<Double> keys = new ArrayList<Double>(values.keySet());
                 for (Double key : keys) {
-                    final Long value = values.remove(key);
-                    values.put(key * exp(-alpha * (startTime - oldStartTime)), value);
+                    final ValueWithTimestamp value = values.remove(key);
+                    long age = this.startTime - value.getTimestamp();
+                    if (age < maxAge) {
+                        values.put(key * exp(-alpha * (startTime - oldStartTime)), value);
+                    }
                 }
 
                 // make sure the counter is in sync with the number of stored samples.
@@ -194,5 +210,23 @@ public class ExponentiallyDecayingSample implements Sample {
 
     private void unlockForRegularUsage() {
         lock.readLock().unlock();
+    }
+
+    private static class ValueWithTimestamp {
+        private final long value;
+        private final long timestamp;
+
+        private ValueWithTimestamp(long value, long timestamp) {
+            this.value = value;
+            this.timestamp = timestamp;
+        }
+
+        public long getValue() {
+            return value;
+        }
+
+        public long getTimestamp() {
+            return timestamp;
+        }
     }
 }
