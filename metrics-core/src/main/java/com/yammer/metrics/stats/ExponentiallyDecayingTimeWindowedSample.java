@@ -36,6 +36,8 @@ public class ExponentiallyDecayingTimeWindowedSample implements Sample {
 
   @Override
   public int size() {
+    rotateSamplesIfNeeded();
+
     int size = 0;
     for (ExponentiallyDecayingSample sample : allSamples) {
       size += sample.size();
@@ -45,13 +47,15 @@ public class ExponentiallyDecayingTimeWindowedSample implements Sample {
 
   @Override
   public void update(long value) {
-    rotateActiveSampleIfNeeded();
+    rotateSamplesIfNeeded();
 
     allSamples[activeSampleIndex.get()].update(value);
   }
 
   @Override
   public Snapshot getSnapshot() {
+    rotateSamplesIfNeeded();
+
     List<Long> values = new ArrayList<Long>();
 
     for (ExponentiallyDecayingSample sample : allSamples) {
@@ -61,15 +65,24 @@ public class ExponentiallyDecayingTimeWindowedSample implements Sample {
     return new Snapshot(values);
   }
 
-  private void rotateActiveSampleIfNeeded() {
+  private void rotateSamplesIfNeeded() {
     long now = clock.tick();
     long rotateAt = this.rotateAt.get();
-    if (now >= rotateAt && this.rotateAt.compareAndSet(rotateAt, nextRotateTime())) {
-      int currentIndex = activeSampleIndex.get();
-      int nextIndex = (currentIndex + 1) % SAMPLE_COUNT;
-      allSamples[nextIndex].clear();
+
+    if (now >= rotateAt && this.rotateAt.compareAndSet(rotateAt, now + ROTATE_INTERVAL)) {
+      long samplesToClear = Math.min(1 + ((now - rotateAt) / ROTATE_INTERVAL), SAMPLE_COUNT);
+
+      int nextIndex = index(activeSampleIndex.get() + 1);
+      for (int i = 0; i < samplesToClear; i++) {
+        int indexToClear = index(nextIndex + i);
+        allSamples[indexToClear].clear();
+      }
       activeSampleIndex.set(nextIndex);
     }
+  }
+
+  private int index(int i ) {
+    return i % SAMPLE_COUNT;
   }
 
   private long nextRotateTime() {
