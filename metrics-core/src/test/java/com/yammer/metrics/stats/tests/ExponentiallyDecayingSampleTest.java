@@ -112,10 +112,12 @@ public class ExponentiallyDecayingSampleTest {
         assertAllValuesBetween(sample, 1000, 2000);
 
         // wait for 15 hours and add another value.
-        // this should trigger a rescale. The rescale will drop all values more than 5 minutes old
+        // this should trigger a rescale. Note that the number of samples will be reduced to 2
+        // because of the very small scaling factor that will make all existing priorities equal to
+        // zero after rescale.
         clock.addHours(15);
         sample.update(2000);
-        assertThat("the sample has 1 element", sample.getSnapshot().size(), is(1));
+        assertThat("the sample has 2 elements", sample.getSnapshot().size(), is(2));
         assertAllValuesBetween(sample, 1000, 3000);
 
 
