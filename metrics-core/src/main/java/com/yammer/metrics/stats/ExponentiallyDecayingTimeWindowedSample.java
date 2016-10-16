@@ -81,7 +81,7 @@ public class ExponentiallyDecayingTimeWindowedSample implements Sample {
     }
   }
 
-  private int index(int i ) {
+  private int index(int i) {
     return i % SAMPLE_COUNT;
   }
 
