@@ -1,6 +1,6 @@
 package com.yammer.metrics.core;
 
-import com.yammer.metrics.stats.ExponentiallyDecayingSample;
+import com.yammer.metrics.stats.ExponentiallyDecayingTimeWindowedSample;
 import com.yammer.metrics.stats.Sample;
 import com.yammer.metrics.stats.Snapshot;
 import com.yammer.metrics.stats.UniformSample;
@@ -43,7 +43,7 @@ public class Histogram implements Metric, Sampling, Summarizable {
         BIASED {
             @Override
             public Sample newSample() {
-                return new ExponentiallyDecayingSample(DEFAULT_SAMPLE_SIZE, DEFAULT_ALPHA);
+                return new ExponentiallyDecayingTimeWindowedSample();
             }
         };
 
