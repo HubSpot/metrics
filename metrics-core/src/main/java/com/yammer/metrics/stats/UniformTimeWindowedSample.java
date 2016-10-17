@@ -8,28 +8,24 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.yammer.metrics.core.Clock;
 
-public class ExponentiallyDecayingTimeWindowedSample implements Sample {
-  private static final int SAMPLE_COUNT = 4;
+public class UniformTimeWindowedSample implements Sample {
   private static final long ROTATE_INTERVAL = TimeUnit.MINUTES.toNanos(1);
 
-  private final ExponentiallyDecayingSample[] allSamples;
+  private final UniformSample[] allSamples;
   private final AtomicInteger activeSampleIndex;
   private final Clock clock;
   private final AtomicLong rotateAt;
 
-  public ExponentiallyDecayingTimeWindowedSample() {
-    this.allSamples = new ExponentiallyDecayingSample[SAMPLE_COUNT];
-    for (int i = 0; i < allSamples.length; i++) {
-      allSamples[i] = new ExponentiallyDecayingSample(257, 0.015);
-    }
+  public UniformTimeWindowedSample(int reservoirSize, int sampleCount) {
+    this.allSamples = createSamples(reservoirSize, sampleCount);
     this.activeSampleIndex = new AtomicInteger(0);
     this.clock = Clock.defaultClock();
-    this.rotateAt = new AtomicLong(nextRotateTime());
+    this.rotateAt = new AtomicLong(clock.tick() + ROTATE_INTERVAL);
   }
 
   @Override
   public void clear() {
-    for (ExponentiallyDecayingSample sample : allSamples) {
+    for (UniformSample sample : allSamples) {
       sample.clear();
     }
   }
@@ -39,7 +35,7 @@ public class ExponentiallyDecayingTimeWindowedSample implements Sample {
     rotateSamplesIfNeeded();
 
     int size = 0;
-    for (ExponentiallyDecayingSample sample : allSamples) {
+    for (UniformSample sample : allSamples) {
       size += sample.size();
     }
     return size;
@@ -58,11 +54,21 @@ public class ExponentiallyDecayingTimeWindowedSample implements Sample {
 
     List<Long> values = new ArrayList<Long>();
 
-    for (ExponentiallyDecayingSample sample : allSamples) {
+    for (UniformSample sample : allSamples) {
       values.addAll(sample.getValues());
     }
 
     return new Snapshot(values);
+  }
+
+  private static UniformSample[] createSamples(int reservoirSize, int sampleCount) {
+    int individualSize = reservoirSize / sampleCount;
+    UniformSample[] samples = new UniformSample[sampleCount];
+    for (int i = 0; i < samples.length; i++) {
+      samples[i] = new UniformSample(individualSize);
+    }
+
+    return samples;
   }
 
   private void rotateSamplesIfNeeded() {
@@ -70,7 +76,7 @@ public class ExponentiallyDecayingTimeWindowedSample implements Sample {
     long rotateAt = this.rotateAt.get();
 
     if (now >= rotateAt && this.rotateAt.compareAndSet(rotateAt, now + ROTATE_INTERVAL)) {
-      long samplesToClear = Math.min(1 + ((now - rotateAt) / ROTATE_INTERVAL), SAMPLE_COUNT);
+      long samplesToClear = Math.min(1 + ((now - rotateAt) / ROTATE_INTERVAL), allSamples.length);
 
       int nextIndex = index(activeSampleIndex.get() + 1);
       for (int i = 0; i < samplesToClear; i++) {
@@ -82,10 +88,6 @@ public class ExponentiallyDecayingTimeWindowedSample implements Sample {
   }
 
   private int index(int i) {
-    return i % SAMPLE_COUNT;
-  }
-
-  private long nextRotateTime() {
-    return clock.tick() + ROTATE_INTERVAL;
+    return i % allSamples.length;
   }
 }

@@ -3,7 +3,6 @@ package com.yammer.metrics.stats;
 import com.yammer.metrics.core.Clock;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -127,13 +126,9 @@ public class ExponentiallyDecayingSample implements Sample {
 
     @Override
     public Snapshot getSnapshot() {
-        return new Snapshot(getValues());
-    }
-
-    public Collection<Long> getValues() {
         lockForRegularUsage();
         try {
-            return values.values();
+            return new Snapshot(values.values());
         } finally {
             unlockForRegularUsage();
         }

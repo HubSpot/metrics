@@ -1,6 +1,7 @@
 package com.yammer.metrics.stats;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
@@ -74,11 +75,16 @@ public class UniformSample implements Sample {
 
     @Override
     public Snapshot getSnapshot() {
+        return new Snapshot(getValues());
+    }
+
+    public Collection<Long> getValues() {
         final int s = size();
         final List<Long> copy = new ArrayList<Long>(s);
         for (int i = 0; i < s; i++) {
             copy.add(values.get(i));
         }
-        return new Snapshot(copy);
+
+        return copy;
     }
 }
