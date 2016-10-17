@@ -113,6 +113,8 @@ public class UniformTimeWindowedSampleTest {
     // wait for 15 hours and add another value.
     // this should clear all previous values.
     clock.addHours(15);
+    assertThat("the sample has 0 elements", sample.getSnapshot().size(), is(0));
+
     sample.update(2000);
     assertThat("the sample has 1 element", sample.getSnapshot().size(), is(1));
     assertAllValuesBetween(sample, 2000, 2001);
