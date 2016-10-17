@@ -18,7 +18,7 @@ import static java.lang.Math.sqrt;
  */
 public class Histogram implements Metric, Sampling, Summarizable {
     private static final int DEFAULT_SAMPLE_SIZE = 1028;
-    private static final int DEFAULT_SAMPLE_COUNT = 4;
+    private static final int DEFAULT_SAMPLE_COUNT = 3;
 
     /**
      * The type of sampling the histogram should be performing.

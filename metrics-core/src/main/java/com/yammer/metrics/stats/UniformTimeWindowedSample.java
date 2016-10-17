@@ -17,9 +17,13 @@ public class UniformTimeWindowedSample implements Sample {
   private final AtomicLong rotateAt;
 
   public UniformTimeWindowedSample(int reservoirSize, int sampleCount) {
+    this(reservoirSize, sampleCount, Clock.defaultClock());
+  }
+
+  public UniformTimeWindowedSample(int reservoirSize, int sampleCount, Clock clock) {
     this.allSamples = createSamples(reservoirSize, sampleCount);
     this.activeSampleIndex = new AtomicInteger(0);
-    this.clock = Clock.defaultClock();
+    this.clock = clock;
     this.rotateAt = new AtomicLong(clock.tick() + ROTATE_INTERVAL);
   }
 
