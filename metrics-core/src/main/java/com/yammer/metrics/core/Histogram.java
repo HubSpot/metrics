@@ -1,6 +1,6 @@
 package com.yammer.metrics.core;
 
-import com.yammer.metrics.stats.ExponentiallyDecayingSample;
+import com.yammer.metrics.stats.UniformTimeWindowedSample;
 import com.yammer.metrics.stats.Sample;
 import com.yammer.metrics.stats.Snapshot;
 import com.yammer.metrics.stats.UniformSample;
@@ -18,7 +18,7 @@ import static java.lang.Math.sqrt;
  */
 public class Histogram implements Metric, Sampling, Summarizable {
     private static final int DEFAULT_SAMPLE_SIZE = 1028;
-    private static final double DEFAULT_ALPHA = 0.015;
+    private static final int DEFAULT_SAMPLE_COUNT = 3;
 
     /**
      * The type of sampling the histogram should be performing.
@@ -36,14 +36,13 @@ public class Histogram implements Metric, Sampling, Summarizable {
         },
 
         /**
-         * Uses an exponentially decaying sample of 1028 elements, which offers a 99.9% confidence
-         * level with a 5% margin of error assuming a normal distribution, and an alpha factor of
-         * 0.015, which heavily biases the sample to the past 5 minutes of measurements.
+         * Uses an array of {@link UniformSample} that get cleared periodically so that data can't
+         * hang around for more than a few minutes.
          */
         BIASED {
             @Override
             public Sample newSample() {
-                return new ExponentiallyDecayingSample(DEFAULT_SAMPLE_SIZE, DEFAULT_ALPHA);
+                return new UniformTimeWindowedSample(DEFAULT_SAMPLE_SIZE, DEFAULT_SAMPLE_COUNT);
             }
         };
 
