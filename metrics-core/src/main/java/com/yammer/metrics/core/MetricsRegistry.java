@@ -224,7 +224,7 @@ public class MetricsRegistry {
      */
     public Histogram newHistogram(Class<?> klass,
                                   String name) {
-        return newHistogram(klass, name, false);
+        return newHistogram(klass, name, true);
     }
 
     /**
@@ -239,7 +239,7 @@ public class MetricsRegistry {
     public Histogram newHistogram(Class<?> klass,
                                   String name,
                                   String scope) {
-        return newHistogram(klass, name, scope, false);
+        return newHistogram(klass, name, scope, true);
     }
 
     /**
