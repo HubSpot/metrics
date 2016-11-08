@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -52,7 +52,7 @@ class TimedInterceptor {
         final AsyncTimed annotation = method.getAnnotation(AsyncTimed.class);
         if (annotation != null) {
             Class<?> returnType = method.getReturnType();
-            if (returnType == CompletableFuture.class) {
+            if (CompletionStage.class.isAssignableFrom(returnType)) {
                 final String group = MetricName.chooseGroup(annotation.group(), klass);
                 final String type = MetricName.chooseType(annotation.type(), klass);
                 final String name = MetricName.chooseName(annotation.name(), method);
@@ -62,9 +62,9 @@ class TimedInterceptor {
                                                                annotation.rateUnit());
                 return invocation -> {
                     final TimerContext ctx = timer.time();
-                    final CompletableFuture<?> future;
+                    final CompletionStage<?> future;
                     try {
-                        future = (CompletableFuture<?>) invocation.proceed();
+                        future = (CompletionStage<?>) invocation.proceed();
                     } catch (Throwable t) {
                         ctx.stop();
                         throw t;
@@ -79,7 +79,7 @@ class TimedInterceptor {
                     return future;
                 };
             } else {
-                LOGGER.warn("Method " + method + " is annotated with @AsyncTimed but does not return a CompletableFuture");
+                LOGGER.warn("Method " + method + " is annotated with @AsyncTimed but does not return a CompletionStage (such as CompletableFuture)");
             }
         }
         return null;
