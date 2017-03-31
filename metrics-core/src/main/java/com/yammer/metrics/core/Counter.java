@@ -1,15 +1,15 @@
 package com.yammer.metrics.core;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * An incrementing and decrementing counter metric.
  */
 public class Counter implements Metric {
-    private final AtomicLong count;
+    private final LongAdder count;
 
     Counter() {
-        this.count = new AtomicLong(0);
+        this.count = new LongAdder();
     }
 
     /**
@@ -25,7 +25,7 @@ public class Counter implements Metric {
      * @param n the amount by which the counter will be increased
      */
     public void inc(long n) {
-        count.addAndGet(n);
+        count.add(n);
     }
 
     /**
@@ -41,7 +41,7 @@ public class Counter implements Metric {
      * @param n the amount by which the counter will be increased
      */
     public void dec(long n) {
-        count.addAndGet(0 - n);
+        count.add(0 - n);
     }
 
     /**
@@ -50,14 +50,14 @@ public class Counter implements Metric {
      * @return the counter's current value
      */
     public long count() {
-        return count.get();
+        return count.sum();
     }
 
     /**
      * Resets the counter to 0.
      */
     public void clear() {
-        count.set(0);
+        count.reset();
     }
 
     @Override

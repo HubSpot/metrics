@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
@@ -38,7 +39,8 @@ public abstract class AbstractPollingReporterTest {
 
     protected static class TestMetricsRegistry extends MetricsRegistry {
         public <T extends Metric> T add(MetricName name, T metric) {
-            return getOrAdd(name, metric);
+            Function<MetricName, T> metricCreator = (ignored) -> metric;
+            return getOrAdd(name, metricCreator);
         }
     }
 

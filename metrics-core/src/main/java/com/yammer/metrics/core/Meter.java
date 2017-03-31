@@ -5,7 +5,7 @@ import com.yammer.metrics.stats.EWMA;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * A meter metric which measures mean throughput and one-, five-, and fifteen-minute
@@ -20,7 +20,7 @@ public class Meter implements Metered, Stoppable {
     private final EWMA m5Rate = EWMA.fiveMinuteEWMA();
     private final EWMA m15Rate = EWMA.fifteenMinuteEWMA();
 
-    private final AtomicLong count = new AtomicLong();
+    private final LongAdder count = new LongAdder();
     private final long startTime;
     private final TimeUnit rateUnit;
     private final String eventType;
@@ -81,7 +81,7 @@ public class Meter implements Metered, Stoppable {
      * @param n the number of events
      */
     public void mark(long n) {
-        count.addAndGet(n);
+        count.add(n);
         m1Rate.update(n);
         m5Rate.update(n);
         m15Rate.update(n);
@@ -89,7 +89,7 @@ public class Meter implements Metered, Stoppable {
 
     @Override
     public long count() {
-        return count.get();
+        return count.sum();
     }
 
     @Override

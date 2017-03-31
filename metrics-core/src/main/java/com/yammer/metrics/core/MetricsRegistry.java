@@ -4,6 +4,7 @@ import com.yammer.metrics.core.Histogram.SampleType;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Function;
 
 /**
  * A registry of metric instances.
@@ -76,7 +77,8 @@ public class MetricsRegistry {
      */
     public <T> Gauge<T> newGauge(MetricName metricName,
                                  Gauge<T> metric) {
-        return getOrAdd(metricName, metric);
+        Function<MetricName, Gauge<T>> metricCreator = (ignored) -> metric;
+        return getOrAdd(metricName, metricCreator);
     }
 
     /**
@@ -139,14 +141,14 @@ public class MetricsRegistry {
                                                          Gauge<T> metric,
                                                          long pollInterval,
                                                          TimeUnit pollIntervalUnit) {
-        StoppableHistogram histogram = new StoppableHistogram(SampleType.BIASED);
-        Histogram added = getOrAdd(metricName, histogram);
-        if (added == histogram) {
+        Function<MetricName, Histogram> metricCreator = (ignored) -> {
+            StoppableHistogram histogram = new StoppableHistogram(SampleType.BIASED);
             Stoppable stoppable = PollingGauge.poll(metric, histogram, newGaugePollThreadPool(), pollInterval, pollIntervalUnit);
             histogram.setStoppable(stoppable);
-        }
+            return histogram;
+        };
 
-        return added;
+        return getOrAdd(metricName, metricCreator);
     }
 
     /**
@@ -182,7 +184,8 @@ public class MetricsRegistry {
      * @return a new {@link Counter}
      */
     public Counter newCounter(MetricName metricName) {
-        return getOrAdd(metricName, new Counter());
+        Function<MetricName, Counter> metricCreator = (ignored) -> new Counter();
+        return getOrAdd(metricName, metricCreator);
     }
 
     /**
@@ -251,7 +254,10 @@ public class MetricsRegistry {
      */
     public Histogram newHistogram(MetricName metricName,
                                   boolean biased) {
-        return getOrAdd(metricName, new Histogram(biased ? SampleType.BIASED : SampleType.UNIFORM));
+        Function<MetricName, Histogram> metricCreator = (ignored) -> {
+            return new Histogram(biased ? SampleType.BIASED : SampleType.UNIFORM);
+        };
+        return getOrAdd(metricName, metricCreator);
     }
 
     /**
@@ -302,11 +308,10 @@ public class MetricsRegistry {
     public Meter newMeter(MetricName metricName,
                           String eventType,
                           TimeUnit unit) {
-        final Metric existingMetric = metrics.get(metricName);
-        if (existingMetric != null) {
-            return (Meter) existingMetric;
-        }
-        return getOrAdd(metricName, new Meter(newMeterTickThreadPool(), eventType, unit, clock));
+        Function<MetricName, Meter> metricCreator = (ignored) -> {
+            return new Meter(newMeterTickThreadPool(), eventType, unit, clock);
+        };
+        return getOrAdd(metricName, metricCreator);
     }
 
     /**
@@ -382,11 +387,10 @@ public class MetricsRegistry {
     public Timer newTimer(MetricName metricName,
                           TimeUnit durationUnit,
                           TimeUnit rateUnit) {
-        final Metric existingMetric = metrics.get(metricName);
-        if (existingMetric != null) {
-            return (Timer) existingMetric;
-        }
-        return getOrAdd(metricName, new Timer(newMeterTickThreadPool(), durationUnit, rateUnit, clock));
+        Function<MetricName, Timer> metricCreator = (ignored) -> {
+            return new Timer(newMeterTickThreadPool(), durationUnit, rateUnit, clock);
+        };
+        return getOrAdd(metricName, metricCreator);
     }
 
     /**
@@ -545,12 +549,31 @@ public class MetricsRegistry {
     /**
      * Gets any existing metric with the given name or, if none exists, adds the given metric.
      *
+     * @param name          the metric's name
+     * @param metricCreator the function to use to create the new metric
+     * @param <T>           the type of the metric
+     * @return either the existing metric or the result of {@code metricCreator}
+     */
+    @SuppressWarnings("unchecked")
+    protected final <T extends Metric> T getOrAdd(MetricName name, Function<MetricName, T> metricCreator) {
+        return (T) metrics.computeIfAbsent(name, (ignored) -> {
+            T metric = metricCreator.apply(name);
+            notifyMetricAdded(name, metric);
+            return metric;
+        });
+    }
+
+    /**
+     * Gets any existing metric with the given name or, if none exists, adds the given metric.
+     *
+     * @deprecated use {@link MetricsRegistry#getOrAdd(MetricName, Function)}
      * @param name   the metric's name
      * @param metric the new metric
      * @param <T>    the type of the metric
      * @return either the existing metric or {@code metric}
      */
     @SuppressWarnings("unchecked")
+    @Deprecated
     protected final <T extends Metric> T getOrAdd(MetricName name, T metric) {
         final Metric existingMetric = metrics.get(name);
         if (existingMetric == null) {

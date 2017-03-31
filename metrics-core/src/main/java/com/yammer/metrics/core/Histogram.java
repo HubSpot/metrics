@@ -7,6 +7,7 @@ import com.yammer.metrics.stats.UniformSample;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.LongAdder;
 
 import static java.lang.Math.sqrt;
 
@@ -52,12 +53,12 @@ public class Histogram implements Metric, Sampling, Summarizable {
     private final Sample sample;
     private final AtomicLong min = new AtomicLong();
     private final AtomicLong max = new AtomicLong();
-    private final AtomicLong sum = new AtomicLong();
+    private final LongAdder sum = new LongAdder();
     // These are for the Welford algorithm for calculating running variance
     // without floating-point doom.
     private final AtomicReference<double[]> variance =
             new AtomicReference<double[]>(new double[]{-1, 0}); // M, S
-    private final AtomicLong count = new AtomicLong();
+    private final LongAdder count = new LongAdder();
 
     /**
      * Creates a new {@link Histogram} with the given sample type.
@@ -83,10 +84,10 @@ public class Histogram implements Metric, Sampling, Summarizable {
      */
     public void clear() {
         sample.clear();
-        count.set(0);
+        count.reset();
         max.set(Long.MIN_VALUE);
         min.set(Long.MAX_VALUE);
-        sum.set(0);
+        sum.reset();
         variance.set(new double[]{-1, 0});
     }
 
@@ -105,11 +106,11 @@ public class Histogram implements Metric, Sampling, Summarizable {
      * @param value the length of the value
      */
     public void update(long value) {
-        count.incrementAndGet();
+        count.increment();
         sample.update(value);
         setMax(value);
         setMin(value);
-        sum.getAndAdd(value);
+        sum.add(value);
         updateVariance(value);
     }
 
@@ -119,7 +120,7 @@ public class Histogram implements Metric, Sampling, Summarizable {
      * @return the number of values recorded
      */
     public long count() {
-        return count.get();
+        return count.sum();
     }
 
     /* (non-Javadoc)
@@ -150,7 +151,7 @@ public class Histogram implements Metric, Sampling, Summarizable {
     @Override
     public double mean() {
         if (count() > 0) {
-            return sum.get() / (double) count();
+            return sum.sum() / (double) count();
         }
         return 0.0;
     }
@@ -171,7 +172,7 @@ public class Histogram implements Metric, Sampling, Summarizable {
      */
     @Override
     public double sum() {
-        return (double) sum.get();
+        return (double) sum.sum();
     }
 
     @Override

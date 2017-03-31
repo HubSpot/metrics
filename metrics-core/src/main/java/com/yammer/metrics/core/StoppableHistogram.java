@@ -7,10 +7,7 @@ class StoppableHistogram extends Histogram implements Stoppable {
 
   StoppableHistogram(SampleType type) {
     super(type);
-    stoppable = new AtomicReference<Stoppable>(new Stoppable() {
-      @Override
-      public void stop() {}
-    });
+    stoppable = new AtomicReference<>(() -> {});
   }
 
   void setStoppable(Stoppable stoppable) {
