@@ -2,6 +2,7 @@ package com.yammer.metrics.stats;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 import static java.lang.Math.exp;
 
@@ -26,7 +27,7 @@ public class EWMA {
     private volatile boolean initialized = false;
     private volatile double rate = 0.0;
 
-    private final AtomicLong uncounted = new AtomicLong();
+    private final LongAdder uncounted = new LongAdder();
     private final double alpha, interval;
 
     /**
@@ -77,14 +78,14 @@ public class EWMA {
      * @param n the new value
      */
     public void update(long n) {
-        uncounted.addAndGet(n);
+        uncounted.add(n);
     }
 
     /**
      * Mark the passage of time and decay the current rate accordingly.
      */
     public void tick() {
-        final long count = uncounted.getAndSet(0);
+        final long count = uncounted.sumThenReset();
         final double instantRate = count / interval;
         if (initialized) {
             rate += (alpha * (instantRate - rate));
