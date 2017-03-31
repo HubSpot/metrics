@@ -556,7 +556,11 @@ public class MetricsRegistry {
      */
     @SuppressWarnings("unchecked")
     protected final <T extends Metric> T getOrAdd(MetricName name, Function<MetricName, T> metricCreator) {
-        return (T) metrics.computeIfAbsent(name, metricCreator);
+        return (T) metrics.computeIfAbsent(name, (ignored) -> {
+            T metric = metricCreator.apply(name);
+            notifyMetricAdded(name, metric);
+            return metric;
+        });
     }
 
     /**
