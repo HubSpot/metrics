@@ -562,7 +562,7 @@ public class MetricsRegistry {
     /**
      * Gets any existing metric with the given name or, if none exists, adds the given metric.
      *
-     * @deprecated use {@link }
+     * @deprecated use {@link MetricsRegistry#getOrAdd(MetricName, Function)}
      * @param name   the metric's name
      * @param metric the new metric
      * @param <T>    the type of the metric
