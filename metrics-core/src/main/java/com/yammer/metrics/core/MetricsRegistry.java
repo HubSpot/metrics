@@ -261,6 +261,19 @@ public class MetricsRegistry {
     }
 
     /**
+     * Creates a new {@link Histogram} with a custom sampling policy, and registers it under the given metric name.
+     *
+     * @param metricName the name of the metric
+     * @param sample sampling policy for the histogram
+     * @return a new {@link Histogram}
+     */
+    public Histogram newHistogram(MetricName metricName,
+                                  Sample sample) {
+        Function<MetricName, Histogram> metricCreator = (ignored) -> new Histogram(sample);
+        return getOrAdd(metricName, metricCreator);
+    }
+
+    /**
      * Creates a new {@link Meter} and registers it under the given class and name.
      *
      * @param klass     the class which owns the metric

@@ -8,10 +8,29 @@ import com.yammer.metrics.core.Clock;
 import com.yammer.metrics.stats.Snapshot;
 import com.yammer.metrics.stats.UniformTimeWindowedSample;
 
-import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.assertThat;
-
 public class UniformTimeWindowedSampleTest {
+  @Test
+  public void aSampleWithLowObservationRateAndConfiguredRotationPeriod() throws Exception {
+    final ManualClock clock = new ManualClock();
+    final long rotateIntervalNanos = TimeUnit.SECONDS.toNanos(600);
+    final UniformTimeWindowedSample sample = new UniformTimeWindowedSample(100, 1, rotateIntervalNanos, clock);
+
+    for (int i = 0; i < 100; i ++) {
+      sample.update(i);
+      clock.addMillis(5_000);
+    }
+
+    assertThat("the sample has a size of 100",
+        sample.size(),
+        is(100));
+
+    final Snapshot snapshot = sample.getSnapshot();
+
+    assertThat("the snapshot has 100 elements",
+        snapshot.size(),
+        is(100));
+  }
+
   @Test
   @SuppressWarnings("unchecked")
   public void aSampleOf100OutOf1000Elements() throws Exception {

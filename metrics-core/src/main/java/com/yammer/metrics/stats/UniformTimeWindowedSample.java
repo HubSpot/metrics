@@ -9,22 +9,28 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.yammer.metrics.core.Clock;
 
 public class UniformTimeWindowedSample implements Sample {
-  private static final long ROTATE_INTERVAL = TimeUnit.MINUTES.toNanos(1);
+  private static final long DEFAULT_ROTATE_INTERVAL = TimeUnit.MINUTES.toNanos(1);
 
   private final UniformSample[] allSamples;
   private final AtomicInteger activeSampleIndex;
   private final Clock clock;
+  private final long rotateIntervalNanos;
   private final AtomicLong rotateAt;
 
   public UniformTimeWindowedSample(int reservoirSize, int sampleCount) {
-    this(reservoirSize, sampleCount, Clock.defaultClock());
+    this(reservoirSize, sampleCount, DEFAULT_ROTATE_INTERVAL, Clock.defaultClock());
   }
 
   public UniformTimeWindowedSample(int reservoirSize, int sampleCount, Clock clock) {
+    this(reservoirSize, sampleCount, DEFAULT_ROTATE_INTERVAL, clock);
+  }
+
+  public UniformTimeWindowedSample(int reservoirSize, int sampleCount, long rotateIntervalNanos, Clock clock) {
     this.allSamples = createSamples(reservoirSize, sampleCount);
     this.activeSampleIndex = new AtomicInteger(0);
     this.clock = clock;
-    this.rotateAt = new AtomicLong(clock.tick() + ROTATE_INTERVAL);
+    this.rotateIntervalNanos = rotateIntervalNanos;
+    this.rotateAt = new AtomicLong(clock.tick() + rotateIntervalNanos);
   }
 
   @Override
@@ -79,8 +85,8 @@ public class UniformTimeWindowedSample implements Sample {
     long now = clock.tick();
     long rotateAt = this.rotateAt.get();
 
-    if (now >= rotateAt && this.rotateAt.compareAndSet(rotateAt, now + ROTATE_INTERVAL)) {
-      long samplesToClear = Math.min(1 + ((now - rotateAt) / ROTATE_INTERVAL), allSamples.length);
+    if (now >= rotateAt && this.rotateAt.compareAndSet(rotateAt, now + rotateIntervalNanos)) {
+      long samplesToClear = Math.min(1 + ((now - rotateAt) / rotateIntervalNanos), allSamples.length);
 
       int nextIndex = index(activeSampleIndex.get() + 1);
       for (int i = 0; i < samplesToClear; i++) {
