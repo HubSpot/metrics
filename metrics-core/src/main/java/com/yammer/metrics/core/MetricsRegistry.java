@@ -1,6 +1,7 @@
 package com.yammer.metrics.core;
 
 import com.yammer.metrics.core.Histogram.SampleType;
+import com.yammer.metrics.stats.Sample;
 
 import java.util.*;
 import java.util.concurrent.*;
