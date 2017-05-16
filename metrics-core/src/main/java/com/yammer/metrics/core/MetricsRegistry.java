@@ -151,9 +151,9 @@ public class MetricsRegistry {
     }
 
     public <T extends Number> Histogram newPollingGauge(MetricName metricName,
-                                                         Gauge<T> metric,
-                                                         long pollInterval,
-                                                         TimeUnit pollIntervalUnit) {
+                                                        Gauge<T> metric,
+                                                        long pollInterval,
+                                                        TimeUnit pollIntervalUnit) {
         Function<MetricName, Histogram> metricCreator = (ignored) -> {
             StoppableHistogram histogram = new StoppableHistogram(SampleType.BIASED);
             Stoppable stoppable = PollingGauge.poll(metric, histogram, newGaugePollThreadPool(), pollInterval, pollIntervalUnit);
