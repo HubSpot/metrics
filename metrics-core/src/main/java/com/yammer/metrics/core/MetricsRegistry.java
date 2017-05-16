@@ -138,10 +138,22 @@ public class MetricsRegistry {
         return newPollingGauge(metricName, metric, pollInterval, pollIntervalUnit);
     }
 
-    private <T extends Number> Histogram newPollingGauge(MetricName metricName,
-                                                         Gauge<T> metric,
-                                                         long pollInterval,
-                                                         TimeUnit pollIntervalUnit) {
+    /**
+     * Given a new {@link Gauge}, creates a {@link PollingGauge} registers it under the given metric name.
+     * By default the gauge will be polled once per second.
+     *
+     * @param metricName the name of the metric
+     * @param metric     the metric
+     * @return {@code metric}
+     */
+    public <T extends Number> Histogram newPollingGauge(MetricName metricName, Gauge<T> metric) {
+        return newPollingGauge(metricName, metric, 1, TimeUnit.SECONDS);
+    }
+
+    public <T extends Number> Histogram newPollingGauge(MetricName metricName,
+                                                        Gauge<T> metric,
+                                                        long pollInterval,
+                                                        TimeUnit pollIntervalUnit) {
         Function<MetricName, Histogram> metricCreator = (ignored) -> {
             StoppableHistogram histogram = new StoppableHistogram(SampleType.BIASED);
             Stoppable stoppable = PollingGauge.poll(metric, histogram, newGaugePollThreadPool(), pollInterval, pollIntervalUnit);
