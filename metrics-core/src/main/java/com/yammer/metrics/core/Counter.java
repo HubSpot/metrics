@@ -7,9 +7,11 @@ import java.util.concurrent.atomic.LongAdder;
  */
 public class Counter implements Metric {
     private final LongAdder count;
+    private boolean isActive;
 
     Counter() {
         this.count = new LongAdder();
+        this.isActive = false;
     }
 
     /**
@@ -25,6 +27,7 @@ public class Counter implements Metric {
      * @param n the amount by which the counter will be increased
      */
     public void inc(long n) {
+        isActive = true;
         count.add(n);
     }
 
@@ -41,6 +44,7 @@ public class Counter implements Metric {
      * @param n the amount by which the counter will be increased
      */
     public void dec(long n) {
+        isActive = true;
         count.add(0 - n);
     }
 
@@ -51,6 +55,13 @@ public class Counter implements Metric {
      */
     public long count() {
         return count.sum();
+    }
+
+    /**
+     * @return whether the counter has been incremented or decremented
+     */
+    public boolean isActive() {
+        return isActive;
     }
 
     /**
