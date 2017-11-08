@@ -232,7 +232,7 @@ public class MetricsRegistry {
     }
 
     /**
-     * Creates a new non-biased {@link Histogram} and registers it under the given class and name.
+     * Creates a new biased {@link Histogram} and registers it under the given class and name.
      *
      * @param klass the class which owns the metric
      * @param name  the name of the metric
@@ -244,7 +244,7 @@ public class MetricsRegistry {
     }
 
     /**
-     * Creates a new non-biased {@link Histogram} and registers it under the given class, name, and
+     * Creates a new biased {@link Histogram} and registers it under the given class, name, and
      * scope.
      *
      * @param klass the class which owns the metric
