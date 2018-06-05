@@ -1,5 +1,6 @@
 package com.yammer.metrics.core;
 
+import java.util.function.Supplier;
 
 /**
  * A gauge metric is an instantaneous reading of a particular value. To instrument a queue's depth,
@@ -26,5 +27,14 @@ public abstract class Gauge<T> implements Metric {
     @Override
     public <U> void processWith(MetricProcessor<U> processor, MetricName name, U context) throws Exception {
         processor.processGauge(name, this, context);
+    }
+
+    public static <T> Gauge<T> newGauge(Supplier<T> valueSupplier) {
+        return new Gauge<T>() {
+            @Override
+            public T value() {
+                return valueSupplier.get();
+            }
+        };
     }
 }
