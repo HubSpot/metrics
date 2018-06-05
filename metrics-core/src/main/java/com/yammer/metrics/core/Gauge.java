@@ -29,7 +29,7 @@ public abstract class Gauge<T> implements Metric {
         processor.processGauge(name, this, context);
     }
 
-    public static <T> Gauge<T> newGauge(Supplier<T> valueSupplier) {
+    public static <T> Gauge<T> of(Supplier<T> valueSupplier) {
         return new Gauge<T>() {
             @Override
             public T value() {
