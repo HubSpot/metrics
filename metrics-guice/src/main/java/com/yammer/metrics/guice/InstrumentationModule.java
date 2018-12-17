@@ -1,5 +1,7 @@
 package com.yammer.metrics.guice;
 
+import java.util.Objects;
+
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.google.inject.matcher.Matchers;
@@ -21,11 +23,13 @@ import com.yammer.metrics.reporting.JmxReporter;
  * @see GaugeInjectionListener
  */
 public class InstrumentationModule extends AbstractModule {
+    private final HealthCheckRegistry healthCheckRegistry = createHealthCheckRegistry();
+    private final MetricsRegistry metricsRegistry = createMetricsRegistry();
+
     @Override
     protected void configure() {
-        final MetricsRegistry metricsRegistry = createMetricsRegistry();
         bind(MetricsRegistry.class).toInstance(metricsRegistry);
-        bind(HealthCheckRegistry.class).toInstance(createHealthCheckRegistry());
+        bind(HealthCheckRegistry.class).toInstance(healthCheckRegistry);
         bindJmxReporter();
         bindListener(Matchers.any(), new MeteredListener(metricsRegistry));
         bindListener(Matchers.any(), new TimedListener(metricsRegistry));
@@ -52,5 +56,23 @@ public class InstrumentationModule extends AbstractModule {
      */
     protected MetricsRegistry createMetricsRegistry() {
         return Metrics.defaultRegistry();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        } else if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        InstrumentationModule that = (InstrumentationModule) o;
+        return Objects.equals(healthCheckRegistry, that.healthCheckRegistry) &&
+            Objects.equals(metricsRegistry, that.metricsRegistry);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(healthCheckRegistry, metricsRegistry);
     }
 }
