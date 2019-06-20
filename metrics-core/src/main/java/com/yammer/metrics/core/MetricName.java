@@ -1,12 +1,15 @@
 package com.yammer.metrics.core;
 
-import javax.management.ObjectName;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.TreeMap;
+
+import javax.management.ObjectName;
 
 /**
  * A value class encapsulating a metric's owning class and name.
@@ -16,7 +19,7 @@ public class MetricName implements Comparable<MetricName> {
     private final String type;
     private final String name;
     private final String scope;
-    private final String mBeanName;
+    private final Optional<String> mBeanName;
     private final Map<String, String> tags;
 
     /**
@@ -60,7 +63,7 @@ public class MetricName implements Comparable<MetricName> {
      * @param scope the scope of the {@link Metric}
      */
     public MetricName(String group, String type, String name, String scope) {
-        this(group, type, name, scope, createMBeanName(group, type, name, scope));
+        this(group, type, name, scope, Collections.emptyMap());
     }
 
     /**
@@ -74,7 +77,7 @@ public class MetricName implements Comparable<MetricName> {
      *                  MBean.
      */
     public MetricName(String group, String type, String name, String scope, String mBeanName) {
-        this(group, type, name, scope, mBeanName, Collections.<String, String>emptyMap());
+        this(group, type, name, scope, mBeanName, Collections.emptyMap());
     }
 
     public MetricName(Class<?> klass, String name, Map<String, String> tags) {
@@ -112,7 +115,7 @@ public class MetricName implements Comparable<MetricName> {
      * @param scope the scope of the {@link Metric}
      */
     public MetricName(String group, String type, String name, String scope, Map<String, String> tags) {
-        this(group, type, name, scope, createMBeanName(group, type, name, scope, tags), tags);
+        this(group, type, name, scope, Optional.empty(), tags);
     }
 
     /**
@@ -126,6 +129,10 @@ public class MetricName implements Comparable<MetricName> {
      *                  MBean.
      */
     public MetricName(String group, String type, String name, String scope, String mBeanName, Map<String, String> tags) {
+        this(group, type, name, scope, Optional.of(mBeanName), tags);
+    }
+
+    private MetricName(String group, String type, String name, String scope, Optional<String> mBeanName, Map<String, String> tags) {
         if (group == null || type == null) {
             throw new IllegalArgumentException("Both group and type need to be specified");
         }
@@ -137,7 +144,7 @@ public class MetricName implements Comparable<MetricName> {
         this.name = name;
         this.scope = scope;
         this.mBeanName = mBeanName;
-        this.tags = new HashMap<String, String>(tags);
+        this.tags = new HashMap<>(tags);
     }
 
     /**
@@ -193,7 +200,7 @@ public class MetricName implements Comparable<MetricName> {
      * @return the MBean name
      */
     public String getMBeanName() {
-        return mBeanName;
+        return mBeanName.orElseGet(this::createMBeanName);
     }
 
     public Map<String, String> getTags() {
@@ -205,29 +212,30 @@ public class MetricName implements Comparable<MetricName> {
         if (this == o) { return true; }
         if (o == null || getClass() != o.getClass()) { return false; }
         final MetricName that = (MetricName) o;
-        return mBeanName.equals(that.mBeanName);
+        return Objects.equals(group, that.group) &&
+            Objects.equals(type, that.type) &&
+            Objects.equals(name, that.name) &&
+            Objects.equals(scope, that.scope) &&
+            Objects.equals(mBeanName, that.mBeanName) &&
+            Objects.equals(tags, that.tags);
     }
 
     @Override
     public int hashCode() {
-        return mBeanName.hashCode();
+        return Objects.hash(group, type, name, scope, mBeanName, tags);
     }
 
     @Override
     public String toString() {
-        return mBeanName;
+        return mBeanName.orElseGet(this::createMBeanName);
     }
 
     @Override
     public int compareTo(MetricName o) {
-        return mBeanName.compareTo(o.mBeanName);
+        return toString().compareTo(o.toString());
     }
 
-    private static String createMBeanName(String group, String type, String name, String scope) {
-        return createMBeanName(group, type, name, scope, Collections.<String, String>emptyMap());
-    }
-
-    private static String createMBeanName(String group, String type, String name, String scope, Map<String, String> tags) {
+    private String createMBeanName() {
         final StringBuilder nameBuilder = new StringBuilder();
         nameBuilder.append(ObjectName.quote(group));
         nameBuilder.append(":type=");
@@ -240,7 +248,7 @@ public class MetricName implements Comparable<MetricName> {
             nameBuilder.append(",name=");
             nameBuilder.append(ObjectName.quote(name));
         }
-        for (Entry<String, String> tag : new TreeMap<String, String>(tags).entrySet()) {
+        for (Entry<String, String> tag : new TreeMap<>(tags).entrySet()) {
             nameBuilder.append(",").append(tag.getKey()).append("=");
             nameBuilder.append(ObjectName.quote(tag.getValue()));
         }
