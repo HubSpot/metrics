@@ -1,14 +1,15 @@
 package com.yammer.metrics.log4j;
 
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Meter;
-import com.yammer.metrics.core.MetricsRegistry;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.log4j.Appender;
 import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.Level;
 import org.apache.log4j.spi.LoggingEvent;
 
-import java.util.concurrent.TimeUnit;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.Meter;
+import com.yammer.metrics.core.MetricsRegistry;
 
 /**
  * A Log4J {@link Appender} delegate which has seven meters, one for each logging level and one for
@@ -60,6 +61,8 @@ public class InstrumentedAppender extends AppenderSkeleton {
             case Level.FATAL_INT:
                 fatal.mark();
                 break;
+             default:
+                 // do nothing
         }
     }
 

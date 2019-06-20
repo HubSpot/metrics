@@ -14,4 +14,14 @@
         <Class name="~com\.yammer\.metrics\.spring\..*"/>
         <Bug code="Se"/>
     </Match>
+
+    <!-- Don't care about using \n in format strings -->
+    <Match>
+        <Bug code="FS" />
+    </Match>
+
+    <!-- Don't care about reliance on default encoding -->
+    <Match>
+        <Bug code="Dm" />
+    </Match>
 </FindBugsFilter>
