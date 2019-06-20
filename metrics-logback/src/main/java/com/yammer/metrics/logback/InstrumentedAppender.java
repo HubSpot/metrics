@@ -1,14 +1,15 @@
 package com.yammer.metrics.logback;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
-import ch.qos.logback.core.AppenderBase;
+import java.util.concurrent.TimeUnit;
+
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.MetricsRegistry;
 
-import java.util.concurrent.TimeUnit;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
+import ch.qos.logback.core.AppenderBase;
 
 /**
  * A Logback {@link AppenderBase} which has six meters, one for each logging level and one for the
@@ -54,6 +55,8 @@ public class InstrumentedAppender extends AppenderBase<ILoggingEvent> {
             case Level.ERROR_INT:
                 error.mark();
                 break;
+            default:
+                // do nothing
         }
     }
 }
