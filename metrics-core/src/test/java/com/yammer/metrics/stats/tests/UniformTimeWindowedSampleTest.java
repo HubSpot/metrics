@@ -1,11 +1,5 @@
 package com.yammer.metrics.stats.tests;
 
-import static org.hamcrest.Matchers.allOf;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.lessThan;
-import static org.junit.Assert.assertThat;
-
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
@@ -13,6 +7,9 @@ import org.junit.Test;
 import com.yammer.metrics.core.Clock;
 import com.yammer.metrics.stats.Snapshot;
 import com.yammer.metrics.stats.UniformTimeWindowedSample;
+
+import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.assertThat;
 
 public class UniformTimeWindowedSampleTest {
   @Test

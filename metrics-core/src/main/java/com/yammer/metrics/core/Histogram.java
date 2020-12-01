@@ -1,15 +1,15 @@
 package com.yammer.metrics.core;
 
-import static java.lang.Math.sqrt;
+import com.yammer.metrics.stats.Sample;
+import com.yammer.metrics.stats.Snapshot;
+import com.yammer.metrics.stats.UniformSample;
+import com.yammer.metrics.stats.UniformTimeWindowedSample;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
-import com.yammer.metrics.stats.Sample;
-import com.yammer.metrics.stats.Snapshot;
-import com.yammer.metrics.stats.UniformSample;
-import com.yammer.metrics.stats.UniformTimeWindowedSample;
+import static java.lang.Math.sqrt;
 
 /**
  * A metric which calculates the distribution of a value.
