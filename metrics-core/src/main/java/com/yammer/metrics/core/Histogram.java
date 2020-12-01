@@ -1,9 +1,9 @@
 package com.yammer.metrics.core;
 
-import com.yammer.metrics.stats.UniformTimeWindowedSample;
 import com.yammer.metrics.stats.Sample;
 import com.yammer.metrics.stats.Snapshot;
 import com.yammer.metrics.stats.UniformSample;
+import com.yammer.metrics.stats.UniformTimeWindowedSample;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -19,7 +19,7 @@ import static java.lang.Math.sqrt;
  */
 public class Histogram implements Metric, Sampling, Summarizable {
     private static final int DEFAULT_SAMPLE_SIZE = 1028;
-    private static final int DEFAULT_SAMPLE_COUNT = 3;
+    private static final int DEFAULT_SAMPLE_COUNT = 4;
 
     /**
      * The type of sampling the histogram should be performing.

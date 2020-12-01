@@ -129,7 +129,7 @@ public class UniformTimeWindowedSampleTest {
       sample.update(1000 + i);
       clock.addMillis(100);
     }
-    assertThat("the sample has 50 elements", sample.getSnapshot().size(), is(50));
+    assertThat("the sample has 75 elements", sample.getSnapshot().size(), is(75));
     assertAllValuesBetween(sample, 1000, 2000);
 
     // wait for 15 hours and add another value.
@@ -147,7 +147,7 @@ public class UniformTimeWindowedSampleTest {
       sample.update(3000 + i);
       clock.addMillis(100);
     }
-    assertThat("the sample has 50 elements", sample.getSnapshot().size(), is(50));
+    assertThat("the sample has 75 elements", sample.getSnapshot().size(), is(75));
     assertAllValuesBetween(sample, 3000, 4000);
 
 

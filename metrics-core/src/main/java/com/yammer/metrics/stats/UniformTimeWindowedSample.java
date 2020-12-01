@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.yammer.metrics.core.Clock;
 
 public class UniformTimeWindowedSample implements Sample {
-  private static final long DEFAULT_ROTATE_INTERVAL = TimeUnit.MINUTES.toNanos(1);
+  private static final long DEFAULT_ROTATE_INTERVAL = TimeUnit.SECONDS.toNanos(20);
 
   private final UniformSample[] allSamples;
   private final AtomicInteger activeSampleIndex;
